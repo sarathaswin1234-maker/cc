@@ -1,0 +1,22 @@
+1)nano omp_sum.c
+#include <omp.h>
+#include <stdio.h>
+
+int main() {
+    int sum = 0;
+    int n = 1000;
+    
+    // Parallel for loop with reduction
+    #pragma omp parallel for reduction(+:sum)
+    for(int i = 1; i <= n; i++) {
+        sum += i;
+    }
+    
+    printf("Sum of 1 to %d = %d\n", n, sum);
+    return 0;
+}
+
+2)compile
+gcc -fopenmp omp_sum.c -o omp_sum
+3)run
+./omp_sum
