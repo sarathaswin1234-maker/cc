@@ -1,0 +1,173 @@
+import { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+
+// Firebase configuration - REPLACE WITH YOUR ACTUAL CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyAjqTKb-Y6gD3LKC-OnmXcMqxwQjg7eg2A",
+  authDomain: "cc-todo-e2c05.firebaseapp.com",
+  projectId: "cc-todo-e2c05",
+  storageBucket: "cc-todo-e2c05.appspot.com",
+  messagingSenderId: "446946127373",
+  appId: "1:446946127373:web:ccfd91c4efad92789c2f44",
+  measurementId: "G-TE2PML2BTP"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [todos, setTodos] = useState([]);
+  const [newTodo, setNewTodo] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  // Auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Todos listener
+  useEffect(() => {
+    if (!user) {
+      setTodos([]);
+      return;
+    }
+
+  const q = query(
+  collection(db, 'todos'),
+  where('userId', '==', user.uid)
+  // Remove orderBy to avoid needing index
+);
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const todosData = [];
+      querySnapshot.forEach((doc) => {
+        todosData.push({ id: doc.id, ...doc.data() });
+      });
+      setTodos(todosData);
+    });
+
+    return unsubscribe;
+  }, [user]);
+
+  const loginWithGoogle = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error('Login error:', error);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const addTodo = async (e) => {
+    e.preventDefault();
+    if (newTodo.trim()) {
+      try {
+        await addDoc(collection(db, 'todos'), {
+          text: newTodo.trim(),
+          completed: false,
+          userId: user.uid,
+          createdAt: new Date()
+        });
+        setNewTodo('');
+      } catch (error) {
+        console.error('Add todo error:', error);
+      }
+    }
+  };
+
+  const toggleTodo = async (id, completed) => {
+    try {
+      await updateDoc(doc(db, 'todos', id), {
+        completed: !completed
+      });
+    } catch (error) {
+      console.error('Toggle todo error:', error);
+    }
+  };
+
+  const deleteTodo = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'todos', id));
+    } catch (error) {
+      console.error('Delete todo error:', error);
+    }
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div>
+        <h1>Todo App</h1>
+        <button onClick={loginWithGoogle}>
+          Login with Google
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div>
+        <h1>Todo App</h1>
+        <div>
+          <span>Hello, {user.displayName}</span>
+          <button onClick={logout}>Logout</button>
+        </div>
+      </div>
+
+      <form onSubmit={addTodo}>
+        <input
+          type="text"
+          value={newTodo}
+          onChange={(e) => setNewTodo(e.target.value)}
+          placeholder="Add a new todo..."
+        />
+        <button type="submit">Add Todo</button>
+      </form>
+
+      <div>
+        {todos.map(todo => (
+          <div key={todo.id}>
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              onChange={() => toggleTodo(todo.id, todo.completed)}
+            />
+            <span style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
+              {todo.text}
+            </span>
+            <button onClick={() => deleteTodo(todo.id)}>
+              Delete
+            </button>
+          </div>
+        ))}
+        
+        {todos.length === 0 && (
+          <div>No todos yet. Add one above!</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
