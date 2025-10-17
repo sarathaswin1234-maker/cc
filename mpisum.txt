@@ -1,0 +1,46 @@
+#include <mpi.h>
+#include <stdio.h>
+
+#define ARRAY_SIZE 100
+
+int main(int argc, char** argv) {
+    MPI_Init(NULL, NULL);
+    
+    int size, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    
+    int numbers[ARRAY_SIZE];
+    int local_sum = 0, total_sum = 0;
+    int elements_per_process = ARRAY_SIZE / size;
+    
+    // Initialize array in root process
+    if (rank == 0) {
+        for (int i = 0; i < ARRAY_SIZE; i++) {
+            numbers[i] = i + 1;  // 1 to 100
+        }
+    }
+    
+    // Scatter array to all processes
+    int local_numbers[elements_per_process];
+    MPI_Scatter(numbers, elements_per_process, MPI_INT, 
+                local_numbers, elements_per_process, MPI_INT, 
+                0, MPI_COMM_WORLD);
+    
+    // Calculate local sum
+    for (int i = 0; i < elements_per_process; i++) {
+        local_sum += local_numbers[i];
+    }
+    
+    printf("Process %d local sum: %d\n", rank, local_sum);
+    
+    // Reduce to get total sum
+    MPI_Reduce(&local_sum, &total_sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    
+    if (rank == 0) {
+        printf("Total sum: %d\n", total_sum);
+    }
+    
+    MPI_Finalize();
+    return 0;
+}
