@@ -1,0 +1,24 @@
+1)sudo apt update
+2)sudo apt install mpich
+3)nano mpi_hello.c
+code
+1)
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+    MPI_Init(NULL, NULL);
+    
+    int size, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    
+    printf("Process %d of %d: Hello from Ubuntu!\n", rank, size);
+    
+    MPI_Finalize();
+    return 0;
+}
+4)compile
+mpicc mpi_hello.c -o mpi_hello
+5)run
+mpiexec -n 4 ./mpi_hello
